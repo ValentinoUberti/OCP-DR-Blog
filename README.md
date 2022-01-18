@@ -27,9 +27,20 @@ The following images describe a high-level overview of the scenario:
 
 *Normal operativity - all the services running in the Primary Datacenter on VMware Cluster 1*
 
+---
 
 
+![Normal operativity](images/2.jpg?raw=true "Title")
 
+*Disaster recovery in progress - all the VMS running on the secondary datacenter will use the  same ipv4 address, gateway, DNS and routing table of the primary datacenter*
+
+---
+
+![Normal operativity](images/3.jpg?raw=true "Title")
+
+*A new OpenShift cluster is created in the secondary datacenter. The connectivity change between the Primary and Secondary Datacenter is a manual operation, but it can be fully automated.*
+
+---
 
 
 
