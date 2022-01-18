@@ -43,6 +43,11 @@ The following images describe a high-level overview of the scenario:
 ---
 
 
+Speaking of OpenShift, we will take advantage of the powerful "[Installer Provisioned Infrastructure](https://docs.openshift.com/container-platform/4.9/installing/installing_vsphere/installing-vsphere-installer-provisioned.html)" (IPI) method that will allow us, once everything is configured, to create our cluster with a single command. We will use ArgoCD to complete all the configurations when the cluster is operational.
+
+
+
+
 
 
 
