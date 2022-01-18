@@ -78,7 +78,7 @@ The cold start procedure for our OCP cluster is all about creating e configuring
 2. Find the operator catalogs that include our operators, "prune it,” (remove all the unnecessary images), and mirror only the required operators images.
 3. Configure a Git repository for our ArgoCD applications
 4. Prepare all the YAML files that describe the resources we need like:
-   1.  Identity providers
+   1. Identity providers
    2. OperatorGroup
    3. Operator Subscriptions
    4. Main ArgoCD application
