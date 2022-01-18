@@ -430,9 +430,11 @@ Valentino Uberti <vuberti@redhat.com>
 
 ## Reference:
 
-OCP IPI disconnected on VMware vSphere
 
-1. https://docs.openshift.com/container-platform/4.7/installing/installing_vsphere/installing-restricted-networks-installer-provisioned-vsphere.html
+
+1. OCP IPI disconnected on VMware vSphere
+
+ https://docs.openshift.com/container-platform/4.7/installing/installing_vsphere/installing-restricted-networks-installer-provisioned-vsphere.html
 
 
 
