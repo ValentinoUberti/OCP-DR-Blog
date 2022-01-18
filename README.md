@@ -120,5 +120,47 @@ The OpenShift installation images mirror process requires the following:
 2. The OpenShift installation pull secret
 3. The “oc” utility obtained from https://cloud.redhat.com
 
+These are instructions taken from the [official documentation](https://docs.openshift.com/container-platform/4.9/installing/installing-mirroring-installation-images.html#installing-mirroring-installation-images).
+
+
+1. Create the base64-encoded version of the user and password for accessing the local mirror registry
+
+```
+$echo -n 'myuser:mypass' | base64 -w0
+
+bXl1c2VyOm15cGFzcw==
+```
+
+2. Add this login information to the original OpenShift pull secrets obtained from https://cloud.redhat.com/
+
+For this example, the local mirror registry FQDN is “myregistry.mydomain.local” and the pull secret full path is “/home/ocp/pull-secret.json”
+
+
+```
+"auths": {
+    "myregistry.mydomain.local": { 
+      "auth": "bXl1c2VyOm15cGFzcw==", 
+      "email": "registry@myregistry.mydomain.local"
+  }
+
+```
+
+This edited pull secret must be added to the install-config.yaml file.
+
+
+For **convenience**, let's value these environment variables:
+
+| VARIABLE          | DESCRIPTION                         | VALUE                      |
+|-------------------|-------------------------------------|----------------------------|
+| OCP_RELEASE       | The OCP version to mirror           | 4.9.10                     |
+| LOCAL_REGISTRY    | Local registry FQDN                 | myregistry.mydomain.local  |
+| LOCAL_REPOSITORY  | Local registry repository           | ocp4/openshift4            |
+| PRODUCT_REPO      | Fixed value                         | openshift-release-dev      |
+| LOCAL_SECRET_JSON | Full path to the edited pull secret | /home/ocp/pull-secret.json |
+| RELEASE_NAME      | Fixed value                         | ocp-release                |
+| ARCHITECTURE      | CPU Architecture                    | x86_64                     |
+
+
+
 
 
