@@ -24,6 +24,7 @@ The following images describe a high-level overview of the scenario:
 
 
 ![Normal operativity](images/1.jpg?raw=true "Title")
+
 *Normal operativity - all the services running in the Primary Datacenter on VMware Cluster 1*
 
 
