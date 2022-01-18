@@ -1,6 +1,6 @@
 ![OpenShift Disaster Recovery](images/title.png?raw=true "Title")
 
-# Cold start OpenShift Disaster Recovery
+# OpenShift Disaster Recovery - A cold start story
 
 We consultants often have to adapt to the customer's infrastructural situation and find the simplest and most maintainable way to face problems that are not always easy to solve. 
 
@@ -424,7 +424,8 @@ The OpenShift installer is all about automation; it greatly simplifies the insta
 
 Thanks for reading!
 
-Valentino Uberti <vuberti@redhat.com> 
+Valentino Uberti 
+<vuberti@redhat.com> 
 
 
 
