@@ -338,7 +338,112 @@ We have done with the mirroring! Let’s take a look at adding nodes to the OCP 
 
 
 
+## Adding Infrastructure nodes
 
+When using the IPI installation method, the OCP cluster will be created with three control-plane nodes and three worker nodes.
+
+Thanks to the machineSet OCP resource, we can easily scale our worker nodes but what if we need to create a new machineSet for infrastructure nodes in an automated way, and why do we need those Infrastructure nodes?
+
+We need the  Infrastructure nodes for two main reasons:
+
+1. Red Hat subscription vCPU counts omit any vCPU reported by a node labeled node-role.kubernetes.io/infra: ""
+2. Run some workloads on these nodes such as the ingress controller, OpenShift registry, etc ... freeing resources from worker nodes
+
+
+How Infrastructure nodes can be created in an automated way?
+
+One way is to export and filter the existing worker node machineSet, update at least the labels for the name and role and apply this information to the cluster.
+
+
+As an example, the infrastructure nodes machineSet can be created with this script:
+
+
+```
+MACHINESET_NAME=$(oc get machineset -n openshift-machine-api -o jsonpath="{.items[0].metadata.name}{'infra'}")
+
+oc get machineset -n openshift-machine-api -o json\
+| jq '.items[0]'\
+| jq '.metadata.name=env["MACHINESET_NAME"]'\
+| jq '.spec.selector.matchLabels."machine.openshift.io/cluster-api-machineset"=env["MACHINESET_NAME"]'\
+| jq '.spec.template.metadata.labels."machine.openshift.io/cluster-api-machineset"=env["MACHINESET_NAME"]'\
+| jq '.spec.template.spec.metadata.labels."node-role.kubernetes.io/infra"=""'\
+| jq 'del (.metadata.annotations)'\
+| jq 'del (.metadata.managedFields)'\
+| jq 'del (.metadata.creationTimestamp)'\
+| jq 'del (.metadata.generation)'\
+| jq 'del (.metadata.resourceVersion)'\
+| jq 'del (.metadata.selfLink)'\
+| jq 'del (.metadata.uid)'\
+| jq 'del (.status)'\
+| jq '.spec.replicas=3'\
+| jq -r '.spec.template.spec.providerSpec.value.numCPUs=2'\
+| jq -r '.spec.template.spec.providerSpec.value.memoryMiB=16384'\
+| oc create -f -
+
+```
+
+## ArgoCD configuration
+
+Once the cluster is up and running, all the remaining resources should be created using the GitOps approach: the Git server will be our source of truth, every YAML resource present in our Git repository will be created in the OCP cluster thanks to ArgoCD. This is so far the best and simple method and that’s why ArgoCD is the most popular tool for this kind of scenario.
+
+To follow this approach we need to configure just one ArgoCD application following the “app of apps” pattern.
+
+[https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/)
+
+Once ArgoCD is configured,  we need to push our configurations and applications resources to the Git repo. ArgoCD will create all the resources for us.
+
+In OpenShift we can use the ArgoCD power by installing the officially supported Red Hat GitOps Operator.
+
+
+
+## Ready, set, go 
+
+Finally, with everything configured, we need to create, for example, an Ansible playbook that executes these instructions:
+
+
+1. Create a cluster using the openshift-installer and the pre-configured install-config-yaml
+2. Create the resources from the “Operators image mirror”:
+   1. catalogSource.yaml
+   2. imageContentSourcePolicy.yaml
+3. Create the infra nodes
+4. Create the main ArgoCD application that deploys all other applications/resources from the Git server like:
+    1. LDAP identity provider
+    2. Group sync configuration
+    3. Applications
+    4. OperatorGroup and Subscriptions
+    4. ...
+
+
+The bastion VM can now be cloned ad copied (like all other services VM) to the secondary datacenter. In the case of DR, we need to power on the bastion host and run the Ansible playbook (after all the services VM are up and running).
+
+An example of further automation is to create a systemd service that starts the installation Ansible playbook, after the bastion node has started successfully.
+
+The **tests** carried out show an average time of  40 minutes to create a cluster of 9 nodes (3 control-plane, three infra, and three workers), to install eight operators and two applications.
+
+The OpenShift installer is all about automation; it greatly simplifies the installation procedure. All typical "day 2" operations can be done declaratively using YAML file resources.
+
+Thanks for reading!
+
+Valentino Uberti <vuberti@redhat.com> 
+
+
+
+## Reference:
+
+OCP IPI disconnected on VMware vSphere
+
+1. https://docs.openshift.com/container-platform/4.7/installing/installing_vsphere/installing-restricted-networks-installer-provisioned-vsphere.html
+
+
+
+2. Mirroring images for a disconnected installation
+
+https://docs.openshift.com/container-platform/4.7/installing/installing-mirroring-installation-images.html#installing-mirroring-installation-images
+
+
+3. Mirroring the Operator catalogs
+
+https://docs.openshift.com/container-platform/4.7/operators/admin/olm-restricted-networks.html#olm-mirror-catalog_olm-restricted-networks
 
 
 
