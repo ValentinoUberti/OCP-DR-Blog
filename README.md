@@ -1,5 +1,7 @@
 ![OpenShift Disaster Recovery](images/title.png?raw=true "Title")
 
+January 18, 2021 | By Valentino Uberti
+
 # OpenShift Disaster Recovery - A cold start story
 
 We consultants often have to adapt to the customer's infrastructural situation and find the simplest and most maintainable way to face problems that are not always easy to solve. 
