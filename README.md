@@ -99,4 +99,26 @@ The following graph summarizes the logical flow overview of tasks that culminate
 
 ---
 
+Let's dig a little deeper into the **preparatory** procedure.
+
+# OpenShift images mirror
+
+Why do we need to mirror the OpenShift installation image registry?
+
+Almost all the OCP infrastructure services run in containers and to run a container OCP must download the relative image.
+
+In a standard OCP installation, the images are downloaded from the official OCP image repository hosted by [Red Hat Quay](https://quay.io/repository/openshift-release-dev)
+
+What if OCP couldn't reach quay.io for whatever reason? 
+The installation will fail: that’s why we need to clone all the installation images to our local image repository. 
+We will instruct the OCP installer to use our local image repository **instead of** quay.io.
+
+
+The OpenShift installation images mirror process requires the following:
+
+1. User and password for accessing the local mirror registry
+2. The OpenShift installation pull secret
+3. The “oc” utility obtained from https://cloud.redhat.com
+
+
 
