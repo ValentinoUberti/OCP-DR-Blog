@@ -161,6 +161,187 @@ For **convenience**, let's value these environment variables:
 | ARCHITECTURE      | CPU Architecture                    | x86_64                     |
 
 
+The “PRODUCT_REPO” var must have the value of “openshift-release-dev” (even if it sound strange), and the “RELEASE_NAME” must be equal to “ocp-release”
+
+
+Now let’s run the image mirror on the bastion node:
+
+
+```
+oc adm release mirror -a ${LOCAL_SECRET_JSON} --from=quay.io/${PRODUCT_REPO}/${RELEASE_NAME}:${OCP_RELEASE}-${ARCHITECTURE} --to=${LOCAL_REGISTRY}/${LOCAL_REPOSITORY} --to-release-image=${LOCAL_REGISTRY}/${LOCAL_REPOSITORY}:${OCP_RELEASE}-${ARCHITECTURE}
+
+```
+
+After the mirror is complete, save the section “imageContentSources” from the output and add it to the install-config.yaml
+
+Example output from “oc adm release mirror”
+
+```
+imageContentSources:
+- mirrors:
+  - myregistry.mydomain.local/ocp4/openshift4
+  source: quay.io/openshift-release-dev/ocp-release
+- mirrors:
+  - myregistry.mydomain.local/ocp4/openshift4
+  source: quay.io/openshift-release-dev/ocp-v4.0-art-dev
+```
+
+The "imageContentSources" directive informs the installer to pull the installation images from our local mirror registry **instead of** quay.io
+
+After the installation image mirror is completed, we can move on to mirror the needed Operator images.
+
+# Operators images mirror
+
+OCP heavily relies on the concept of Operators and, the various components of an Operator run in a container. 
+For the same reason explained in the previous section (to avoid failure due to an internet connectivity problem) we need to mirror all the images required by the Operators.
+
+Mirroring a set of Operator’s images is not straightforward like mirroring the installation images because we need to know exactly what images to mirror for a certain operator.
+
+Some Operators require a few images; others also require 20: we cannot manually select them one by one because it would be a very long job and above all to be updated continuously (updates are quite frequent ...)
+
+Typically, In a connected OpenShift installation, we can easily  install operators from four default catalog sources:
+
+
+![Catalog](images/5.png?raw=true "Title")
+
+Catalog sources are just images containing a list of relevant operators. 
+
+For example, the “Red Hat” catalog source image lists only Operators created and maintained by Red Hat. 
+
+The “Certified” catalog source image list third-party Operators certified by Red Hat  
+
+(more information about how to gain the Red Hat Certification for Operators can be found [here](https://connect.redhat.com/en/partner-with-us/red-hat-openshift-certification).),
+
+In an air-gapped (disconnected) installation, we can not use these default catalogs because we must avoid external internet connectivity issues; instead, we have to create our **custom catalog** and finally **mirror the images of the operators listed in our custom catalog**.
+
+---
+
+The customer asked for a specific set of Operators:
+
+| Operator                | Provided by       | Catalog source                   |
+|-------------------------|-------------------|----------------------------------|
+| OpenShift Logging       | Red Hat           | Red Hat (redhat-operators)       |
+| OpenShift Elasticsearch | Red Hat           | Red Hat (redhat-operators)       |
+| OpenShift Jaeger        | Red Hat           | Red Hat (redhat-operators)       |
+| Kiali                   | Red Hat           | Red Hat (redhat-operators)       |
+| Dynatrace               | Dynatrace LLC     | Marketplace (redhat-marketplace) |
+| OpenShift Service Mesh  | Red Hat           | Red Hat (redhat-operators)       |
+| ArgoCD                  | Argo CD Community | Community (community-operators)  |
+
+
+How can we create our custom catalog starting from official catalogs?.
+
+First of all, we need to select the catalog image we need. Just for reference, here are the lists of the four OpenShift official catalogs images name:
+
+| Catalog             | Catalog image url                                         |
+|---------------------|-----------------------------------------------------------|
+| redhat-operators    | registry.redhat.io/redhat/redhat-operator-index:v4.9      |
+| certified-operators | registry.redhat.io/redhat/certified-operator-index:v4.9   |
+| redhat-marketplace  | registry.redhat.io/redhat/redhat-marketplace-index:v4.9   |
+| community-operators | registry.redhat.io/redhat/community-operator-index:latest |
+
+
+The catalog image runs a [gRPC](https://grpc.io/docs/what-is-grpc/core-concepts/) server that we can interrogate for obtaining a list of Operators.
+
+Let’s run one of the catalog images locally serving the gRPC server:
+
+
+```
+podman run -p50051:50051 -it registry.redhat.io/redhat/redhat-operator-index:v4.9
+
+```
+
+From another terminal, let’s ask the list of operators included in that catalog image using the grpcurl utility.
+
+But, what is grpcurl used for?
+
+Here the description taken from the [grpcurl git repository](https://github.com/fullstorydev/grpcurl):
+
+“*grpcurl is a command-line tool that lets you interact with gRPC servers. It's basically curl for gRPC servers.*”
+
+```
+grpcurl -plaintext localhost:50051 api.Registry/ListPackages
+```
+
+Example output:
+
+```
+{
+  "name": "jaeger-product"
+}
+{
+  "name": "jws-operator"
+}
+{
+  "name": "kiali-ossm"
+}
+{
+  "name": "klusterlet-product"
+}
+{
+  "name": "kubernetes-nmstate-operator"
+}
+...
+
+```
+
+This list should be reduced in order to mirror only the images used by our selected operator: we don’t want to mirror all the operator’s catalogs and waste up to 1 TeraByte of disk space.
+
+But how can we reduce the list of operators exposed by the catalog source image? We have to use another utility called “[opm](https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/4.9.9/)”.
+
+Using the opm utility, we can now create our custom catalog image only for the operators we need:
+
+For example, if we need the jaeger, kiali, and service-mesh operators:
+
+```
+opm index prune -f registry.redhat.io/redhat/redhat-operator-index:v4.9 -p jaeger-product,kiali-ossm,servicemeshoperator, -t myregistry.mydomain.local/myorganization/my-custom-catalog:v4.9
+```
+
+In this example, the opm tool creates a custom catalog image called “**myregistry.mydomain.local/myorganization/my-custom-catalog:v4.9**”.
+
+The custom catalog must be uploaded to our local mirror registry.
+
+```
+podman push myregistry.mydomain.local/myorganization/my-custom-catalog:v4.9
+
+```
+
+Finally, let’s mirror all the images for our operators:
+
+```
+oc adm catalog mirror myregistry.mydomain.local/myorganization/my-custom-catalog:v4.9 myregistry.mydomain.local/my-operators-images  -a ${LOCAL_SECRET_JSON}
+--index-filter-by-os='linux/amd64'
+
+```
+
+After this operation, we will have our Operators’ images mirrored in our local image registry repository.
+
+The “oc adm catalog mirror” creates two files:
+
+1. catalogSource.yaml
+2. imageContentSourcePolicy.yaml
+
+The former describes our custom catalog source; the latter is the catalog content source for the images of our custom catalog. Therefore, we need to create these files after the cluster installation is completed.
+
+
+How can inform OpenShift to use our local mirror image registry for installing the operators?
+
+After the OpenShift cluster is up and running,  we have to patch the “OperatorHub” custom resource called “cluster” for disabling the default (online) Operators images sources :
+
+```
+oc patch OperatorHub cluster --type json -p '[{"op": "add", "path": "/spec/disableAllDefaultSources", "value": true}]'
+```
+
+After that, we need to apply the two files created by the “oc adm catalog mirror” command previously performed.
+
+We have done with the mirroring! Let’s take a look at adding nodes to the OCP cluster.
+
+
+
+
+
+
+
 
 
 
