@@ -18,6 +18,19 @@ Futher, in case of DR, all primary services (VMs) and OCP clusters must go live 
 
 This is a significant constraint that needs to be addressed. 
 
+For example, it is impossible to run the same AD server or an Image Repository or the same OpenShift cluster on both data centers simultaneously (the OCP API server IP address can not be changed). Therefore the only possible solution is to start all the virtual machines on the secondary data center only when the primary datacenter is completely isolated or unreachable (from a networking point of view).
+
+The following images describe a high-level overview of the scenario:
+
+
+![Normal operativity](images/1.jpg?raw=true "Title")
+*Normal operativity - all the services running in the Primary Datacenter on VMware Cluster 1*
+
+
+
+
+
+
 
 
 
